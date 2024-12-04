@@ -48,7 +48,7 @@ export default function Home() {
             supabaseClient={supabaseBrowserClient}
             appearance={{ theme: ThemeSupa }}
             theme="dark"
-            providers={["github"]}
+            providers={[]}
           />
         </div>
       </main>

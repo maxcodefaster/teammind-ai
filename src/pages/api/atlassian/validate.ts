@@ -27,7 +27,7 @@ export default async function handler(
     }
 
     // Fetch available spaces
-    const spacesResponse = await fetch(`${baseUrl}/rest/api/space`, {
+    const spacesResponse = await fetch(`${baseUrl}/wiki/api/v2/spaces`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${email}:${apiKey}`).toString(
           "base64"

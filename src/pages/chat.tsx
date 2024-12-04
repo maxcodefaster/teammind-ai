@@ -14,6 +14,8 @@ import {
   MessageInput,
   ConversationHeader,
   TypingIndicator,
+  VideoCallButton,
+  EllipsisButton,
 } from "@chatscope/chat-ui-kit-react";
 import { supabaseBrowserClient } from "utils/supabaseBrowser";
 import { useRouter } from "next/router";
@@ -58,7 +60,7 @@ export default function Chat() {
   const [text, setText] = useState("");
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [botIsTyping, setBotIsTyping] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Waiting for query...");
+  const [statusMessage, setStatusMessage] = useState("How can TeamMind help you today?");
   const [userId, setUserId] = useState<string | undefined>();
   const router = useRouter();
 
@@ -101,7 +103,7 @@ export default function Chat() {
           case "responseEnd":
           default:
             setBotIsTyping(false);
-            setStatusMessage("Waiting for query...");
+            setStatusMessage("");
         }
       })
       .subscribe();
@@ -149,7 +151,7 @@ export default function Chat() {
       </Head>
       <main className={styles.main}>
         <div
-          style={{ position: "relative", height: "98vh", overflow: "hidden" }}
+          style={{ position: "relative", height: "100vh", overflow: "hidden" }}
         >
           <MainContainer>
             <ChatContainer>
@@ -159,6 +161,10 @@ export default function Chat() {
                   userName="TeamMind AI"
                   info={statusMessage}
                 />
+                <ConversationHeader.Actions>
+                    <VideoCallButton className="mr-2" />
+                    <EllipsisButton orientation="vertical" />
+                </ConversationHeader.Actions>
               </ConversationHeader>
 
               <MessageList
@@ -198,6 +204,7 @@ export default function Chat() {
               </MessageList>
               <MessageInput
                 placeholder="Type message here"
+                attachButton={false}
                 onSend={submit}
                 onChange={(e, text) => {
                   setText(text);

@@ -14,7 +14,6 @@ import { templates } from "./templates";
 
 const llm = new ChatOpenAI({
   modelName: "gpt-4o-mini",
-  temperature: 0,
 });
 
 const handleRequest = async ({

@@ -1,13 +1,11 @@
-import { OpenAI } from "@langchain/openai";
+import { ChatOpenAI } from "@langchain/openai";
 import { templates } from "./templates";
-import { LLMChain } from "langchain/chains";
-import { PromptTemplate } from "@langchain/core/prompts";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
 import Bottleneck from "bottleneck";
 import { StructuredOutputParser } from "langchain/output_parsers";
+import { StringOutputParser } from "@langchain/core/output_parsers";
 
-const llm = new OpenAI({
-  concurrency: 10,
-  temperature: 0,
+const llm = new ChatOpenAI({
   modelName: "gpt-4o-mini",
 });
 
@@ -78,24 +76,23 @@ const summarize = async ({
   onSummaryDone?: Function;
 }) => {
   console.log("summarizing document of length:", document.length);
-  const promptTemplate = new PromptTemplate({
-    template: inquiry ? summarizerTemplate : summarizerDocumentTemplate,
-    inputVariables: inquiry ? ["document", "inquiry"] : ["document"],
-  });
-  const chain = new LLMChain({
-    prompt: promptTemplate,
-    llm,
-  });
+
+  // Create prompt template based on whether there's an inquiry
+  const promptTemplate = ChatPromptTemplate.fromTemplate(
+    inquiry ? summarizerTemplate : summarizerDocumentTemplate
+  );
+
+  // Create the chain using LCEL with StringOutputParser
+  const chain = promptTemplate.pipe(llm).pipe(new StringOutputParser());
 
   try {
-    const result = await chain.call({
-      prompt: promptTemplate,
+    const result = await chain.invoke({
       document,
       inquiry,
     });
 
-    onSummaryDone && onSummaryDone(result.text);
-    return result.text;
+    onSummaryDone && onSummaryDone(result);
+    return result;
   } catch (e) {
     console.log("Summarization error:", e);
     // Return original document if summarization fails

@@ -47,8 +47,6 @@ export default async function handler(
       .eq("user_id", session.user.id)
       .single();
 
-    console.log("Config data:", configData);
-
     if (configError || !configData) {
       return res
         .status(400)
@@ -61,11 +59,9 @@ export default async function handler(
       .update({ space_key: spaceKey })
       .eq("user_id", session.user.id);
 
-    console.log("Vectorizing content...", configData.email, configData.api_key);
-
     // Initialize Confluence loader with email and API key
     const loader = new ConfluencePagesLoader({
-      baseUrl: configData.base_url,
+      baseUrl: configData.base_url + "/wiki",
       spaceKey,
       username: configData.email,
       accessToken: configData.api_key,
