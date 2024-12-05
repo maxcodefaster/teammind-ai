@@ -14,13 +14,15 @@ import {
   MessageInput,
   ConversationHeader,
   TypingIndicator,
-  VideoCallButton,
-  EllipsisButton,
+  Avatar,
+  Button,
 } from "@chatscope/chat-ui-kit-react";
+import { faVideo, faGear } from '@fortawesome/free-solid-svg-icons';
 import { supabaseBrowserClient } from "utils/supabaseBrowser";
 import { useRouter } from "next/router";
 
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 type ConversationEntry = {
   message: string;
@@ -156,17 +158,21 @@ export default function Chat() {
           <MainContainer>
             <ChatContainer>
               <ConversationHeader>
-                <ConversationHeader.Actions></ConversationHeader.Actions>
+                <Avatar
+                  name="Eliot"
+                  src="/teammind-ai-logo.svg"
+                />
                 <ConversationHeader.Content
                   userName="TeamMind AI"
                   info={statusMessage}
                 />
                 <ConversationHeader.Actions>
-                    <VideoCallButton className="mr-2" />
-                    <EllipsisButton orientation="vertical" />
+                  <Button style={{marginRight: "10px"}} border labelPosition="right" icon={<FontAwesomeIcon style={{marginLeft: "10px"}} icon={faVideo} />}>
+                    <span style={{marginRight: "10px"}}>New Meeting</span>
+                  </Button>
+                  <Button icon={<FontAwesomeIcon icon={faGear} />}/>
                 </ConversationHeader.Actions>
               </ConversationHeader>
-
               <MessageList
                 typingIndicator={
                   botIsTyping ? (
