@@ -6,53 +6,82 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 const llm = new ChatOpenAI({
   modelName: "gpt-4o-mini",
   temperature: 0.3,
-  maxConcurrency: 5,
+  maxConcurrency: 10, // Increased concurrency for better parallelization
 });
 
 const { summarizerTemplate, summarizerDocumentTemplate } = templates;
 
-// Default max size for chunks (12K tokens minus template length)
-const DEFAULT_MAX_SIZE = 12000;
+// Increased max size to reduce number of chunks
+const DEFAULT_MAX_SIZE = 15000;
+const MIN_CHUNK_SIZE = 8000; // Minimum chunk size to avoid over-fragmentation
 
-// Optimized chunk splitting with larger chunks
-const chunkSubstr = (str: string, size: number) => {
+// Optimized chunk splitting focusing on natural breakpoints
+const chunkSubstr = (str: string, maxSize: number) => {
   const paragraphs = str.split("\n\n");
   const chunks: string[] = [];
   let currentChunk = "";
+  let currentSize = 0;
 
   for (const paragraph of paragraphs) {
-    if ((currentChunk + paragraph).length <= size) {
-      currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
-    } else {
+    const paragraphSize = paragraph.length;
+
+    // Direct push for large paragraphs
+    if (paragraphSize >= maxSize) {
       if (currentChunk) {
         chunks.push(currentChunk);
+        currentChunk = "";
+        currentSize = 0;
       }
-      // For long paragraphs, split on sentences
-      if (paragraph.length > size) {
-        const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
-        let sentenceChunk = "";
-        for (const sentence of sentences) {
-          if ((sentenceChunk + sentence).length <= size) {
-            sentenceChunk += sentence;
-          } else {
-            if (sentenceChunk) {
-              chunks.push(sentenceChunk);
-            }
-            sentenceChunk = sentence;
-          }
+
+      // Split large paragraphs on sentence boundaries
+      const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
+      let sentenceChunk = "";
+      let sentenceSize = 0;
+
+      for (const sentence of sentences) {
+        const sentenceLength = sentence.length;
+        if (sentenceSize + sentenceLength <= maxSize) {
+          sentenceChunk += sentence;
+          sentenceSize += sentenceLength;
+        } else {
+          if (sentenceChunk) chunks.push(sentenceChunk);
+          sentenceChunk = sentence;
+          sentenceSize = sentenceLength;
         }
-        if (sentenceChunk) {
-          chunks.push(sentenceChunk);
-        }
+      }
+
+      if (sentenceChunk) chunks.push(sentenceChunk);
+      continue;
+    }
+
+    // Accumulate paragraphs until reaching optimal chunk size
+    if (currentSize + paragraphSize <= maxSize) {
+      currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
+      currentSize += paragraphSize + 2; // +2 for \n\n
+    } else {
+      // Push current chunk if it's substantial
+      if (currentSize >= MIN_CHUNK_SIZE || chunks.length === 0) {
+        chunks.push(currentChunk);
+        currentChunk = paragraph;
+        currentSize = paragraphSize;
       } else {
-        chunks.push(paragraph);
+        // Append to last chunk if current chunk is too small
+        const lastChunk = chunks.pop()!;
+        chunks.push(lastChunk + "\n\n" + currentChunk);
+        currentChunk = paragraph;
+        currentSize = paragraphSize;
       }
-      currentChunk = "";
     }
   }
 
   if (currentChunk) {
-    chunks.push(currentChunk);
+    if (currentSize < MIN_CHUNK_SIZE && chunks.length > 0) {
+      // Append to last chunk if current chunk is too small
+      const lastChunk = chunks.pop()!;
+      chunks.push(lastChunk + "\n\n" + currentChunk);
+    } else {
+      chunks.push(currentChunk);
+    }
   }
 
   return chunks;
@@ -82,22 +111,38 @@ const summarize = async ({
     onSummaryDone && onSummaryDone(result);
     return result;
   } catch (e) {
-    console.log("Summarization error:", e);
+    console.error("Summarization error:", e);
     return document;
   }
 };
 
-// Batch process chunks for better performance
+// Optimized batch processing with adaptive batch sizes
 const processBatch = async (chunks: string[], inquiry?: string) => {
-  const batchSize = 3; // Process 3 chunks at a time
+  const maxBatchSize = 5; // Process up to 5 chunks at a time
   const results: string[] = [];
 
-  for (let i = 0; i < chunks.length; i += batchSize) {
+  // Adaptive batch sizing based on chunk lengths
+  for (let i = 0; i < chunks.length; ) {
+    let batchSize = 1;
+    let totalSize = chunks[i].length;
+
+    // Determine optimal batch size based on chunk sizes
+    while (
+      batchSize < maxBatchSize &&
+      i + batchSize < chunks.length &&
+      totalSize + chunks[i + batchSize].length < DEFAULT_MAX_SIZE * 2
+    ) {
+      totalSize += chunks[i + batchSize].length;
+      batchSize++;
+    }
+
     const batch = chunks.slice(i, i + batchSize);
     const batchResults = await Promise.all(
       batch.map((chunk) => summarize({ document: chunk, inquiry }))
     );
     results.push(...batchResults);
+
+    i += batchSize;
   }
 
   return results.join("\n\n");
@@ -116,34 +161,40 @@ const summarizeLongDocument = async ({
     ? summarizerTemplate.length
     : summarizerDocumentTemplate.length;
 
+  const effectiveMaxSize = DEFAULT_MAX_SIZE - templateLength;
+
   try {
-    // Increased chunk size since we're using a faster model
-    const maxSize = DEFAULT_MAX_SIZE - templateLength;
-
-    if (document.length + templateLength > maxSize) {
-      console.log("Document requires summarization, length:", document.length);
-      const chunks = chunkSubstr(document, maxSize);
-
-      // Process chunks in batches
-      const result = await processBatch(chunks, inquiry);
-
-      // Only do a final pass if really needed
-      if (result.length + templateLength > maxSize * 1.5) {
-        console.log("Final summarization pass needed, length:", result.length);
-        return await summarize({
-          document: result,
-          inquiry,
-          onSummaryDone,
-        });
-      }
-
-      return result;
+    // Skip summarization for small documents
+    if (document.length <= effectiveMaxSize) {
+      return document;
     }
 
-    return document;
+    // Single pass for medium-sized documents
+    if (document.length <= effectiveMaxSize * 2) {
+      return await summarize({
+        document,
+        inquiry,
+        onSummaryDone,
+      });
+    }
+
+    // Multi-pass for large documents
+    const chunks = chunkSubstr(document, effectiveMaxSize);
+    const result = await processBatch(chunks, inquiry);
+
+    // Only do final pass if really needed and result is still too large
+    if (result.length > effectiveMaxSize * 1.5) {
+      return await summarize({
+        document: result,
+        inquiry,
+        onSummaryDone,
+      });
+    }
+
+    return result;
   } catch (e) {
-    console.log("Document summarization error:", e);
-    return document.slice(0, DEFAULT_MAX_SIZE - templateLength);
+    console.error("Document summarization error:", e);
+    return document.slice(0, effectiveMaxSize);
   }
 };
 

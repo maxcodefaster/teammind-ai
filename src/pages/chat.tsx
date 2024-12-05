@@ -17,9 +17,10 @@ import {
   Avatar,
   Button,
 } from "@chatscope/chat-ui-kit-react";
-import { faVideo, faGear } from '@fortawesome/free-solid-svg-icons';
+import { faVideo, faGears } from '@fortawesome/free-solid-svg-icons';
 import { supabaseBrowserClient } from "utils/supabaseBrowser";
 import { useRouter } from "next/router";
+import MeetingBotModal from "../components/MeetingBotModal";
 
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -58,12 +59,38 @@ const updateChatbotMessage = (
       ];
 };
 
+const markdownStyles = {
+  a: {
+    color: '#2563EB',
+    textDecoration: 'underline',
+    '&:hover': {
+      color: '#1E40AF'
+    }
+  },
+  p: {
+    lineHeight: '1',
+    whiteSpace: 'pre-wrap' as const
+  },
+  ul: {
+    marginLeft: '1.5rem',
+    listStyleType: 'disc',
+    listStyle: 'disc'
+  },
+  ol: {
+    marginLeft: '1.5rem',
+    listStyle: 'decimal',
+  },
+  li: {
+  }
+};
+
 export default function Chat() {
   const [text, setText] = useState("");
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [botIsTyping, setBotIsTyping] = useState(false);
   const [statusMessage, setStatusMessage] = useState("How can TeamMind help you today?");
   const [userId, setUserId] = useState<string | undefined>();
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -167,10 +194,19 @@ export default function Chat() {
                   info={statusMessage}
                 />
                 <ConversationHeader.Actions>
-                  <Button style={{marginRight: "10px"}} border labelPosition="right" icon={<FontAwesomeIcon style={{marginLeft: "10px"}} icon={faVideo} />}>
+                  <Button 
+                    style={{marginRight: "10px"}} 
+                    border 
+                    labelPosition="right" 
+                    icon={<FontAwesomeIcon style={{marginLeft: "10px"}} icon={faVideo} />}
+                    onClick={() => setIsMeetingModalOpen(true)}
+                  >
                     <span style={{marginRight: "10px"}}>New Meeting</span>
                   </Button>
-                  <Button icon={<FontAwesomeIcon icon={faGear} />}/>
+                  <Button 
+                    icon={<FontAwesomeIcon icon={faGears} />}
+                    onClick={() => router.push('/settings')}
+                  />
                 </ConversationHeader.Actions>
               </ConversationHeader>
               <MessageList
@@ -194,11 +230,31 @@ export default function Chat() {
                       }}
                     >
                       <Message.CustomContent>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath, rehypeKatex]}
-                        >
-                          {entry.message}
-                        </ReactMarkdown>
+                        <div style={{ ...markdownStyles.p }}>
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={{
+                              a: ({ node, ...props }) => (
+                                <a style={markdownStyles.a} {...props} target="_blank" rel="noopener noreferrer" />
+                              ),
+                              p: ({ node, ...props }) => (
+                                <p style={markdownStyles.p} {...props} />
+                              ),
+                              ul: ({ node, ...props }) => (
+                                <ul style={markdownStyles.ul} {...props} />
+                              ),
+                              ol: ({ node, ...props }) => (
+                                <ol style={markdownStyles.ol} {...props} />
+                              ),
+                              li: ({ node, ...props }) => (
+                                <li style={markdownStyles.li} {...props} />
+                              ),
+                            }}
+                          >
+                            {entry.message}
+                          </ReactMarkdown>
+                        </div>
                       </Message.CustomContent>
                       <Message.Footer
                         sentTime={timeago.format(entry.date)}
@@ -222,6 +278,11 @@ export default function Chat() {
           </MainContainer>
         </div>
       </main>
+
+      <MeetingBotModal 
+        isOpen={isMeetingModalOpen}
+        onClose={() => setIsMeetingModalOpen(false)}
+      />
     </>
   );
 }

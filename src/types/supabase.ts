@@ -76,6 +76,73 @@ export type Database = {
           embedding?: number[];
         };
       };
+      meeting_bots: {
+        Row: {
+          id: string;
+          user_id: string;
+          bot_id: string;
+          bot_name: string;
+          meeting_url: string;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          bot_id: string;
+          bot_name: string;
+          meeting_url: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          bot_id?: string;
+          bot_name?: string;
+          meeting_url?: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      document_changes: {
+        Row: {
+          id: string;
+          meeting_bot_id: string;
+          confluence_page_id: string;
+          confluence_page_title: string;
+          original_content: string | null;
+          updated_content: string;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          meeting_bot_id: string;
+          confluence_page_id: string;
+          confluence_page_title: string;
+          original_content?: string | null;
+          updated_content: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          meeting_bot_id?: string;
+          confluence_page_id?: string;
+          confluence_page_title?: string;
+          original_content?: string | null;
+          updated_content?: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
