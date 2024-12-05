@@ -11,6 +11,7 @@ import { AIMessageChunk } from "@langchain/core/messages";
 import { ConversationLog } from "./conversationLog";
 import { Metadata, getMatchesFromEmbeddings } from "./matches";
 import { templates } from "./templates";
+import { LLMResult } from "@langchain/core/outputs";
 
 const llm = new ChatOpenAI({
   modelName: "gpt-4o-mini",
@@ -122,24 +123,41 @@ const handleRequest = async ({
                   },
                 });
               },
-              handleLLMEnd: async (result: any) => {
-                const finalText = (
-                  result.generations[0][0] as AIMessageChunk
-                ).content.toString();
-                // Store answer in DB
-                await supabaseAuthedClient
-                  .from("conversations")
-                  .update({ entry: finalText })
-                  .eq("id", interactionId);
-                await channel.send({
-                  type: "broadcast",
-                  event: "chat",
-                  payload: {
-                    event: "responseEnd",
-                    token: "END",
-                    interactionId,
-                  },
-                });
+              handleLLMEnd: async (result: LLMResult) => {
+                try {
+                  if (!result?.generations?.[0]?.[0]?.text) {
+                    throw new Error("Invalid LLM response structure");
+                  }
+
+                  const finalText = result.generations[0][0].text;
+                  // Store answer in DB
+                  await supabaseAuthedClient
+                    .from("conversations")
+                    .update({ entry: finalText })
+                    .eq("id", interactionId);
+                  await channel.send({
+                    type: "broadcast",
+                    event: "chat",
+                    payload: {
+                      event: "responseEnd",
+                      token: "END",
+                      interactionId,
+                    },
+                  });
+                } catch (error) {
+                  console.error("Error in handleLLMEnd:", error);
+                  // Send error message to client
+                  await channel.send({
+                    type: "broadcast",
+                    event: "chat",
+                    payload: {
+                      event: "error",
+                      message:
+                        "An error occurred while processing the response",
+                      interactionId,
+                    },
+                  });
+                }
               },
             },
           ],

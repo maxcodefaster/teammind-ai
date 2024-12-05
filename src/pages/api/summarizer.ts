@@ -1,29 +1,21 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { templates } from "./templates";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import Bottleneck from "bottleneck";
-import { StructuredOutputParser } from "langchain/output_parsers";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 
 const llm = new ChatOpenAI({
   modelName: "gpt-4o-mini",
+  temperature: 0.3,
+  maxConcurrency: 5,
 });
 
 const { summarizerTemplate, summarizerDocumentTemplate } = templates;
 
-const parser = StructuredOutputParser.fromNamesAndDescriptions({
-  answer: "answer to the user's question",
-  source: "source used to answer the user's question, should be a website.",
-});
+// Default max size for chunks (12K tokens minus template length)
+const DEFAULT_MAX_SIZE = 12000;
 
-const formatInstructions = parser.getFormatInstructions();
-
-const limiter = new Bottleneck({
-  minTime: 5050,
-});
-
+// Optimized chunk splitting with larger chunks
 const chunkSubstr = (str: string, size: number) => {
-  // Try to split on paragraph boundaries first
   const paragraphs = str.split("\n\n");
   const chunks: string[] = [];
   let currentChunk = "";
@@ -35,7 +27,7 @@ const chunkSubstr = (str: string, size: number) => {
       if (currentChunk) {
         chunks.push(currentChunk);
       }
-      // If a single paragraph is too long, split it on sentence boundaries
+      // For long paragraphs, split on sentences
       if (paragraph.length > size) {
         const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
         let sentenceChunk = "";
@@ -75,14 +67,10 @@ const summarize = async ({
   inquiry?: string;
   onSummaryDone?: Function;
 }) => {
-  console.log("summarizing document of length:", document.length);
-
-  // Create prompt template based on whether there's an inquiry
   const promptTemplate = ChatPromptTemplate.fromTemplate(
     inquiry ? summarizerTemplate : summarizerDocumentTemplate
   );
 
-  // Create the chain using LCEL with StringOutputParser
   const chain = promptTemplate.pipe(llm).pipe(new StringOutputParser());
 
   try {
@@ -95,12 +83,25 @@ const summarize = async ({
     return result;
   } catch (e) {
     console.log("Summarization error:", e);
-    // Return original document if summarization fails
     return document;
   }
 };
 
-const rateLimitedSummarize = limiter.wrap(summarize);
+// Batch process chunks for better performance
+const processBatch = async (chunks: string[], inquiry?: string) => {
+  const batchSize = 3; // Process 3 chunks at a time
+  const results: string[] = [];
+
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    const batch = chunks.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map((chunk) => summarize({ document: chunk, inquiry }))
+    );
+    results.push(...batchResults);
+  }
+
+  return results.join("\n\n");
+};
 
 const summarizeLongDocument = async ({
   document,
@@ -116,49 +117,33 @@ const summarizeLongDocument = async ({
     : summarizerDocumentTemplate.length;
 
   try {
-    // Increased threshold to match new context lengths
-    if (document.length + templateLength > 8000) {
+    // Increased chunk size since we're using a faster model
+    const maxSize = DEFAULT_MAX_SIZE - templateLength;
+
+    if (document.length + templateLength > maxSize) {
       console.log("Document requires summarization, length:", document.length);
-      const chunks = chunkSubstr(document, 8000 - templateLength - 1);
+      const chunks = chunkSubstr(document, maxSize);
 
-      // Process chunks in parallel while preserving order
-      const summarizedChunks = await Promise.all(
-        chunks.map(async (chunk) => {
-          try {
-            const result = await rateLimitedSummarize({
-              document: chunk,
-              inquiry,
-              onSummaryDone,
-            });
-            return result || chunk; // Fallback to original chunk if summarization fails
-          } catch (e) {
-            console.log("Chunk summarization error:", e);
-            return chunk; // Preserve original chunk on error
-          }
-        })
-      );
+      // Process chunks in batches
+      const result = await processBatch(chunks, inquiry);
 
-      const result = summarizedChunks.join("\n\n");
-
-      // Increased final summarization threshold
-      if (result.length + templateLength > 10000) {
+      // Only do a final pass if really needed
+      if (result.length + templateLength > maxSize * 1.5) {
         console.log("Final summarization pass needed, length:", result.length);
-        const finalResult = await rateLimitedSummarize({
+        return await summarize({
           document: result,
           inquiry,
           onSummaryDone,
         });
-        return finalResult || result; // Fallback to previous result if final summarization fails
       }
 
       return result;
-    } else {
-      return document; // Return original if it's not too long
     }
+
+    return document;
   } catch (e) {
     console.log("Document summarization error:", e);
-    // In case of errors, return more of the original document
-    return document.slice(0, 8000);
+    return document.slice(0, DEFAULT_MAX_SIZE - templateLength);
   }
 };
 

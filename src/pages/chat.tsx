@@ -209,7 +209,7 @@ export default function Chat() {
                 })}
               </MessageList>
               <MessageInput
-                placeholder="Type message here"
+                placeholder="Type your message to TeamMind AI here..."
                 attachButton={false}
                 onSend={submit}
                 onChange={(e, text) => {
