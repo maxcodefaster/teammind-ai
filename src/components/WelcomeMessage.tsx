@@ -12,7 +12,7 @@ const WelcomeMessage = () => {
       </div>
       <h2 className="text-2xl font-semibold mb-4">Welcome to TeamMind AI</h2>
       <p className="text-center max-w-lg mb-6">
-        I'm here to help you with your tasks, answer questions, and collaborate on your projects. 
+        I am here to help you with your tasks, answer questions, and collaborate on your projects. 
         Feel free to start a conversation!
       </p>
       <div className="bg-gray-100 p-4 rounded-lg">
