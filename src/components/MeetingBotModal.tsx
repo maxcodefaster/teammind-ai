@@ -13,7 +13,6 @@ interface MeetingBotModalProps {
 }
 
 export default function MeetingBotModal({ isOpen, onClose }: MeetingBotModalProps) {
-  const [botName, setBotName] = useState('');
   const [meetingUrl, setMeetingUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +50,6 @@ export default function MeetingBotModal({ isOpen, onClose }: MeetingBotModalProp
         },
         body: JSON.stringify({
           meeting_url: meetingUrl,
-          bot_name: botName,
         }),
       });
 
@@ -66,14 +64,13 @@ export default function MeetingBotModal({ isOpen, onClose }: MeetingBotModalProp
         .from('meeting_bots')
         .insert({
           bot_id: data.bot_id,
-          bot_name: botName,
+          bot_name: "TeamMind AI",
           meeting_url: meetingUrl,
         });
 
       if (dbError) throw dbError;
 
       setSuccess('Bot created! It will join your meeting and create tasks from action items.');
-      setBotName('');
       setMeetingUrl('');
       
       // Close modal after short delay to show success message
@@ -118,25 +115,6 @@ export default function MeetingBotModal({ isOpen, onClose }: MeetingBotModalProp
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="botName"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Bot Name
-            </label>
-            <input
-              type="text"
-              id="botName"
-              value={botName}
-              onChange={(e) => setBotName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-              placeholder="Enter bot name"
-              required
-              disabled={isLoading}
-            />
-          </div>
-
           <div>
             <label
               htmlFor="meetingUrl"

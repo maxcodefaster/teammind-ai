@@ -23,9 +23,9 @@ export default async function handler(
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { meeting_url, bot_name } = req.body;
+    const { meeting_url } = req.body;
 
-    if (!meeting_url || !bot_name) {
+    if (!meeting_url) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -42,7 +42,7 @@ export default async function handler(
       },
       body: JSON.stringify({
         meeting_url,
-        bot_name,
+        bot_name: "TeamMind AI",
         webhook_url: webhookUrl,
         reserved: false,
         recording_mode: "audio_only",
@@ -76,7 +76,7 @@ export default async function handler(
     const { error: dbError } = await supabase.from("meeting_bots").insert({
       user_id: session.user.id,
       bot_id: data.bot_id,
-      bot_name,
+      bot_name: "TeamMind AI",
       meeting_url,
       status: "pending",
     });

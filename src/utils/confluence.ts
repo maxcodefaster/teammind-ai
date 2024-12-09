@@ -103,6 +103,55 @@ export async function getConfluencePage(
   return await response.json();
 }
 
+export async function getConfluenceSpaces(
+  baseUrl: string,
+  email: string,
+  apiKey: string
+) {
+  const response = await fetch(`${baseUrl}/wiki/api/v2/spaces`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${email}:${apiKey}`).toString(
+        "base64"
+      )}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get Confluence spaces: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.results.map((space: any) => ({
+    key: space.key,
+    name: space.name,
+  }));
+}
+
+export async function getConfluencePages(
+  baseUrl: string,
+  apiKey: string,
+  spaceKey: string
+) {
+  const response = await fetch(
+    `${baseUrl}/wiki/api/v2/spaces/${spaceKey}/pages`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get Confluence pages: ${error}`);
+  }
+
+  return await response.json();
+}
+
 export function generateUpdatedContent(
   originalContent: string,
   meetingSummary: string,
@@ -113,7 +162,8 @@ export function generateUpdatedContent(
     priority?: string;
     dueDate?: string;
   }>,
-  keyPoints: string[]
+  keyPoints: string[],
+  decisions?: string[]
 ) {
   // Create a section for the meeting update
   const date = new Date().toISOString().split("T")[0];
@@ -129,6 +179,17 @@ export function generateUpdatedContent(
     <p><strong>Key Points:</strong></p>
     <ul>
       ${keyPoints.map((point) => `<li>${point}</li>`).join("\n")}
+    </ul>
+    `
+        : ""
+    }
+
+    ${
+      decisions && decisions.length > 0
+        ? `
+    <p><strong>Decisions:</strong></p>
+    <ul>
+      ${decisions.map((decision) => `<li>${decision}</li>`).join("\n")}
     </ul>
     `
         : ""

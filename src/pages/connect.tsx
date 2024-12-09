@@ -9,6 +9,8 @@ export default function Connect() {
   const [baseUrl, setBaseUrl] = useState('');
   const [spaces, setSpaces] = useState<Array<{ key: string; name: string }>>([]);
   const [selectedSpace, setSelectedSpace] = useState('');
+  const [jiraProjects, setJiraProjects] = useState<Array<{ key: string; name: string }>>([]);
+  const [selectedJiraProject, setSelectedJiraProject] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isVectorizing, setIsVectorizing] = useState(false);
@@ -81,6 +83,7 @@ export default function Connect() {
       
       const data = await response.json();
       setSpaces(data.spaces);
+      setJiraProjects(data.projects);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to validate API key');
     } finally {
@@ -89,10 +92,23 @@ export default function Connect() {
   };
 
   const startVectorization = async () => {
-    if (!selectedSpace) return;
+    if (!selectedSpace || !selectedJiraProject) return;
     
     setIsVectorizing(true);
     try {
+      // Save Jira project key to atlassian_config
+      const { data: session } = await supabaseBrowserClient.auth.getSession();
+      if (!session.session) throw new Error('No session found');
+
+      const { error: configError } = await supabaseBrowserClient
+        .from('atlassian_config')
+        .update({ 
+          jira_project_key: selectedJiraProject 
+        })
+        .eq('user_id', session.session.user.id);
+
+      if (configError) throw configError;
+
       const response = await fetch('/api/atlassian/vectorize', {
         method: 'POST',
         headers: {
@@ -203,12 +219,12 @@ export default function Connect() {
       );
     }
 
-    // Step 3: Space Selection
+    // Step 3: Space and Project Selection
     return (
       <div className="space-y-6">
         <div>
           <label htmlFor="space" className="block text-sm font-medium text-gray-700">
-            Select Space
+            Select Confluence Space
           </label>
           <select
             id="space"
@@ -226,9 +242,28 @@ export default function Connect() {
         </div>
 
         <div>
+          <label htmlFor="jiraProject" className="block text-sm font-medium text-gray-700">
+            Select Jira Project
+          </label>
+          <select
+            id="jiraProject"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+            value={selectedJiraProject}
+            onChange={(e) => setSelectedJiraProject(e.target.value)}
+          >
+            <option value="">Select a project</option>
+            {jiraProjects.map((project) => (
+              <option key={project.key} value={project.key}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <button
             onClick={startVectorization}
-            disabled={isVectorizing || !selectedSpace}
+            disabled={isVectorizing || !selectedSpace || !selectedJiraProject}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isVectorizing ? (
@@ -251,8 +286,8 @@ export default function Connect() {
   return (
     <>
       <Head>
-        <title>Connect Confluence - TeamMind AI</title>
-        <meta name="description" content="Connect your Confluence workspace to TeamMind AI" />
+        <title>Connect Atlassian - TeamMind AI</title>
+        <meta name="description" content="Connect your Atlassian workspace to TeamMind AI" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -260,10 +295,10 @@ export default function Connect() {
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Connect to Confluence
+            Connect to Atlassian
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Follow these steps to connect your Confluence workspace
+            Follow these steps to connect your Atlassian workspace
           </p>
         </div>
 

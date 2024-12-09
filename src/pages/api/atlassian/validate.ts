@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { createPagesServerClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "../../../types/supabase";
+import { getConfluenceSpaces } from "../../../utils/confluence";
+import { getJiraProjects } from "../../../utils/jira";
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,21 +28,11 @@ export default async function handler(
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Fetch available spaces
-    const spacesResponse = await fetch(`${baseUrl}/wiki/api/v2/spaces`, {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${email}:${apiKey}`).toString(
-          "base64"
-        )}`,
-        Accept: "application/json",
-      },
-    });
-
-    const spacesData = await spacesResponse.json();
-    const spaces = spacesData.results.map((space: any) => ({
-      key: space.key,
-      name: space.name,
-    }));
+    // Fetch both Confluence spaces and Jira projects in parallel
+    const [spaces, projects] = await Promise.all([
+      getConfluenceSpaces(baseUrl, email, apiKey),
+      getJiraProjects(baseUrl, email, apiKey),
+    ]);
 
     // Save the API key, email, and base URL
     await supabase.from("atlassian_config").upsert(
@@ -55,7 +47,7 @@ export default async function handler(
       }
     );
 
-    return res.status(200).json({ spaces });
+    return res.status(200).json({ spaces, projects });
   } catch (error) {
     console.error("Error validating API key:", error);
     return res.status(500).json({ error: "Internal server error" });

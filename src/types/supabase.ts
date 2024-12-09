@@ -32,6 +32,7 @@ export type Database = {
           space_key: string | null;
           base_url: string;
           email: string;
+          jira_project_key: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -42,6 +43,7 @@ export type Database = {
           space_key?: string | null;
           base_url: string;
           email: string;
+          jira_project_key?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -52,6 +54,7 @@ export type Database = {
           space_key?: string | null;
           base_url?: string;
           email?: string;
+          jira_project_key?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -195,7 +195,7 @@ export default function Chat() {
                 />
                 <ConversationHeader.Actions>
                   <Button 
-                    style={{marginRight: "10px"}} 
+                    style={{marginRight: "10px", padding: "8px"}} 
                     border 
                     labelPosition="right" 
                     icon={<FontAwesomeIcon style={{marginLeft: "10px"}} icon={faVideo} />}

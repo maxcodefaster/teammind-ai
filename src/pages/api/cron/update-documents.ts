@@ -4,6 +4,10 @@ import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase"
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { TokenTextSplitter } from "langchain/text_splitter";
 import { Document } from "langchain/document";
+import {
+  getConfluencePages,
+  getConfluencePage,
+} from "../../../utils/confluence";
 
 // Vercel cron jobs are authenticated using a secret token
 const CRON_SECRET = process.env.CRON_SECRET!;
@@ -34,26 +38,18 @@ export default async function handler(
 
     for (const config of configs) {
       try {
-        // Fetch documents from Confluence
-        const response = await fetch(
-          `${config.base_url}/wiki/api/v2/spaces/${config.space_key}/pages`,
-          {
-            headers: {
-              Authorization: `Bearer ${config.api_key}`,
-              Accept: "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          console.error(
-            `Failed to fetch pages for user ${config.user_id}:`,
-            await response.text()
-          );
+        // Skip if no space key is configured
+        if (!config.space_key) {
+          console.log(`No space key configured for user ${config.user_id}`);
           continue;
         }
 
-        const data = await response.json();
+        // Fetch documents from Confluence using the util function
+        const data = await getConfluencePages(
+          config.base_url,
+          config.api_key,
+          config.space_key
+        );
         const pages = data.results;
 
         // Process each page
@@ -65,26 +61,12 @@ export default async function handler(
             .eq("metadata->>confluence_id", page.id)
             .single();
 
-          // Get current page content
-          const contentResponse = await fetch(
-            `${config.base_url}/wiki/api/v2/pages/${page.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${config.api_key}`,
-                Accept: "application/json",
-              },
-            }
+          // Get current page content using the util function
+          const contentData = await getConfluencePage(
+            config.base_url,
+            config.api_key,
+            page.id
           );
-
-          if (!contentResponse.ok) {
-            console.error(
-              `Failed to fetch content for page ${page.id}:`,
-              await contentResponse.text()
-            );
-            continue;
-          }
-
-          const contentData = await contentResponse.json();
           const pageContent = contentData.body.storage.value;
 
           // If document exists and content hasn't changed, skip
