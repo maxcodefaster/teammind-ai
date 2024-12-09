@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "@chatscope/chat-ui-kit-styles/themes/default/variables";
+@import "@chatscope/chat-ui-kit-styles/themes/default/main";
+
+// Colors based on your TeamMind design
+:root {
+  --primary-blue: #888bfa;
+  --light-blue: #b7cbfb;
+  --gray-text: #64748b;
+  --border-color: #e5e7eb;
+}
+
+// Header styling
+.cs-conversation-header {
+  background-color: white !important;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.75rem 1rem;
+}
+
+.cs-conversation-header__content,
+.cs-conversation-header__user-name,
+.cs-conversation-header__info {
+  background-color: white !important;
+  margin-left: 0.5rem;
+}
+
+.cs-conversation-header__user-name {
+  color: #111827;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.cs-conversation-header__info {
+  color: var(--gray-text);
+  font-size: 0.875rem;
+}
+
+// Action buttons
+.cs-button.cs-button--right {
+  background-color: white;
+  border: 1px solid var(--border-color);
+  color: var(--gray-text);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+// Settings button
+.cs-button:not(.cs-button--right) {
+  color: var(--gray-text);
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+// Message styling
+.cs-message--incoming .cs-message__content {
+  background-color: var(--light-blue);
+  color: #111827;
+  border-radius: 0.75rem;
+  border-top-left-radius: 0;
+}
+
+.cs-message--outgoing .cs-message__content {
+  background-color: var(--primary-blue);
+  color: white;
+  border-radius: 0.75rem;
+  border-top-right-radius: 0;
+}
+
+// Input area styling
+.cs-message-input {
+  background-color: white !important;
+  border-top: 1px solid var(--border-color);
+  padding: 1rem;
+}
+
+.cs-message-input__content-editor-wrapper {
+  background-color: var(--light-blue) !important;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 1rem;
+
+  &:focus-within {
+    border-color: var(--primary-blue);
+  }
+}
+
+.cs-message-input__content-editor {
+  color: #111827;
+  background-color: var(--light-blue) !important;
+}
+
+.cs-button--send svg {
+  color: var(--primary-blue) !important;
+}

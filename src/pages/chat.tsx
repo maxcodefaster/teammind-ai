@@ -17,13 +17,14 @@ import {
   Avatar,
   Button,
 } from "@chatscope/chat-ui-kit-react";
-import { faVideo, faGears } from '@fortawesome/free-solid-svg-icons';
+import { faVideo, faBars } from '@fortawesome/free-solid-svg-icons';
 import { supabaseBrowserClient } from "utils/supabaseBrowser";
 import { useRouter } from "next/router";
 import MeetingBotModal from "../components/MeetingBotModal";
 
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import WelcomeMessage from "components/WelcomeMessage";
 
 type ConversationEntry = {
   message: string;
@@ -204,7 +205,7 @@ export default function Chat() {
                     <span style={{marginRight: "10px"}}>New Meeting</span>
                   </Button>
                   <Button 
-                    icon={<FontAwesomeIcon icon={faGears} />}
+                    icon={<FontAwesomeIcon icon={faBars} />}
                     onClick={() => router.push('/settings')}
                   />
                 </ConversationHeader.Actions>
@@ -216,53 +217,59 @@ export default function Chat() {
                   ) : null
                 }
               >
-                {conversation.map((entry, index) => {
-                  return (
-                    <Message
-                      key={index}
-                      style={{ width: "90%" }}
-                      model={{
-                        type: "custom",
-                        sender: entry.speaker,
-                        position: "single",
-                        direction:
-                          entry.speaker === "bot" ? "incoming" : "outgoing",
-                      }}
-                    >
-                      <Message.CustomContent>
-                        <div style={{ ...markdownStyles.p }}>
-                          <ReactMarkdown
-                            remarkPlugins={[remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                            components={{
-                              a: ({ node, ...props }) => (
-                                <a style={markdownStyles.a} {...props} target="_blank" rel="noopener noreferrer" />
-                              ),
-                              p: ({ node, ...props }) => (
-                                <p style={markdownStyles.p} {...props} />
-                              ),
-                              ul: ({ node, ...props }) => (
-                                <ul style={markdownStyles.ul} {...props} />
-                              ),
-                              ol: ({ node, ...props }) => (
-                                <ol style={markdownStyles.ol} {...props} />
-                              ),
-                              li: ({ node, ...props }) => (
-                                <li style={markdownStyles.li} {...props} />
-                              ),
-                            }}
-                          >
-                            {entry.message}
-                          </ReactMarkdown>
-                        </div>
-                      </Message.CustomContent>
-                      <Message.Footer
-                        sentTime={timeago.format(entry.date)}
-                        sender={entry.speaker === "bot" ? "AI" : "You"}
-                      />
-                    </Message>
-                  );
-                })}
+                {conversation.length === 0 ? (
+                  <MessageList.Content className="h-full">
+                    <WelcomeMessage />
+                  </MessageList.Content>
+                ) : (
+                  conversation.map((entry, index) => {
+                    return (
+                      <Message
+                        key={index}
+                        style={{ width: "90%" }}
+                        model={{
+                          type: "custom",
+                          sender: entry.speaker,
+                          position: "single",
+                          direction:
+                            entry.speaker === "bot" ? "incoming" : "outgoing",
+                        }}
+                      >
+                        <Message.CustomContent>
+                          <div style={{ ...markdownStyles.p }}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                              components={{
+                                a: ({ node, ...props }) => (
+                                  <a style={markdownStyles.a} {...props} target="_blank" rel="noopener noreferrer" />
+                                ),
+                                p: ({ node, ...props }) => (
+                                  <p style={markdownStyles.p} {...props} />
+                                ),
+                                ul: ({ node, ...props }) => (
+                                  <ul style={markdownStyles.ul} {...props} />
+                                ),
+                                ol: ({ node, ...props }) => (
+                                  <ol style={markdownStyles.ol} {...props} />
+                                ),
+                                li: ({ node, ...props }) => (
+                                  <li style={markdownStyles.li} {...props} />
+                                ),
+                              }}
+                            >
+                              {entry.message}
+                            </ReactMarkdown>
+                          </div>
+                        </Message.CustomContent>
+                        <Message.Footer
+                          sentTime={timeago.format(entry.date)}
+                          sender={entry.speaker === "bot" ? "AI" : "You"}
+                        />
+                      </Message>
+                    );
+                  })
+                )}
               </MessageList>
               <MessageInput
                 placeholder="Type your message to TeamMind AI here..."
